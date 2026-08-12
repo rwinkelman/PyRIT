@@ -12,7 +12,7 @@ import Initializers from './components/Initializers/Initializers'
 import AttackHistory from './components/History/AttackHistory'
 import ScenarioCatalog from './components/Scenarios/ScenarioCatalog'
 import ScenarioDetail from './components/Scenarios/ScenarioDetail'
-import ScenarioRunStarted from './components/Scenarios/ScenarioRunStarted'
+import ScenarioRunPage from './components/Scenarios/ScenarioRunPage'
 import FeedbackDialog from './components/Feedback/FeedbackDialog'
 import type { HistoryFilters } from './components/History/historyFilters'
 import { ConnectionBanner } from './components/ConnectionBanner'
@@ -33,6 +33,11 @@ import {
 import { attacksApi, versionApi } from './services/api'
 import { toApiError } from './services/errors'
 import { useTour } from './hooks/useTour'
+import {
+  attackConversationRoutePath,
+  attackRoutePath,
+  scenarioRunProvenance,
+} from './utils/routeParams'
 
 const AUTO_DISMISS_MS = 5_000
 
@@ -77,10 +82,6 @@ interface LoadedAttack {
   objective: string
   status: AttackLoadStatus
 }
-
-const attackPath = (attackId: string) => `/attacks/${attackId}`
-const conversationPath = (attackId: string, conversationId: string) =>
-  `/attacks/${attackId}/conversations/${conversationId}`
 
 function ConnectionBannerContainer() {
   const { status, reconnectCount } = useConnectionHealth()
@@ -146,6 +147,10 @@ function App() {
   // the History nav button can restore filters after visiting another view.
   const [searchParams, setSearchParams] = useSearchParams()
   const historyFilters = useMemo(() => filtersFromSearchParams(searchParams), [searchParams])
+  const scenarioResultId = useMemo(
+    () => scenarioRunProvenance(searchParams),
+    [searchParams],
+  )
   const lastHistorySearch = useRef('')
   useEffect(() => {
     if (location.pathname === VIEW_PATHS.history) {
@@ -325,10 +330,10 @@ function App() {
         routeConversationId === readyAttack.mainConversationId ||
         readyAttack.relatedConversationIds.includes(routeConversationId)
       if (!isKnown) {
-        navigate(attackPath(readyAttack.id), { replace: true })
+        navigate(attackRoutePath(readyAttack.id, scenarioResultId), { replace: true })
       }
     }
-  }, [readyAttack, routeConversationId, navigate])
+  }, [readyAttack, routeConversationId, navigate, scenarioResultId])
 
   const handleNavigate = useCallback((view: ViewName) => {
     // Re-attach the last filter query so returning to history restores filters.
@@ -377,16 +382,16 @@ function App() {
     })
     // Replace when promoting an empty /chat to its attack url (first message);
     // push when branching from an existing attack so Back returns to the source.
-    navigate(attackPath(arId), { replace: routeAttackId === null })
+    navigate(attackRoutePath(arId), { replace: routeAttackId === null })
   }, [activeTarget, handleSetActiveTarget, routeAttackId, navigate])
 
   const handleSelectConversation = useCallback((convId: string) => {
     if (!routeAttackId) return
-    navigate(conversationPath(routeAttackId, convId))
-  }, [routeAttackId, navigate])
+    navigate(attackConversationRoutePath(routeAttackId, convId, scenarioResultId))
+  }, [routeAttackId, navigate, scenarioResultId])
 
   const handleOpenAttack = useCallback((openAttackResultId: string) => {
-    navigate(attackPath(openAttackResultId))
+    navigate(attackRoutePath(openAttackResultId))
   }, [navigate])
 
   const chatElement = isAttackNotFound || isAttackError ? (
@@ -415,6 +420,7 @@ function App() {
       isLoadingAttack={isLoadingAttack}
       relatedConversationCount={readyAttack ? readyAttack.relatedConversationIds.length : 0}
       objective={readyAttack ? readyAttack.objective : ''}
+      scenarioResultId={readyAttack ? scenarioResultId : null}
     />
   )
 
@@ -485,7 +491,7 @@ function App() {
                   />
                 }
               />
-              <Route path="/scenario-history/:scenarioResultId" element={<ScenarioRunStarted />} />
+              <Route path="/scenario-history/:scenarioResultId" element={<ScenarioRunPage />} />
               <Route
                 path="/history"
                 element={
