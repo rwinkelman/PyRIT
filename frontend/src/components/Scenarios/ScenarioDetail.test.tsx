@@ -41,6 +41,25 @@ const REMOVED_NORMAL_ESTIMATE_LABELS = new RegExp(
 )
 const CORRECT_HIGHLIGHTED_SETTING_MESSAGE = 'Correct the highlighted setting to calculate this run.'
 
+function adaptiveAttemptEquationName(
+  objectives: number,
+  techniques: number,
+  candidateRule: string,
+  includeBaseline = true,
+): string {
+  const objectiveLabel = objectives === 1 ? 'objective' : 'objectives'
+  const techniqueLabel = techniques === 1
+    ? 'Adaptive technique per objective'
+    : 'Adaptive techniques per objective'
+  const baselineFactor = includeBaseline ? '1 direct baseline plus ' : ''
+  const attemptUpperBound = objectives * techniques + (includeBaseline ? objectives : 0)
+  return `${objectives} ${objectiveLabel} multiplied by ${baselineFactor}up to ${techniques} ${techniqueLabel}, ${
+    candidateRule
+  }, equals up to ${attemptUpperBound} attack attempts. Direct baseline comparison is ${
+    includeBaseline ? 'included' : 'not included'
+  }.`
+}
+
 const mockNavigate = jest.fn()
 const RAW_IMAGE_HTML = ['<', 'img src=x onerror="alert(1)">'].join('')
 
@@ -699,7 +718,11 @@ describe('ScenarioDetail', () => {
       expect.any(AbortSignal),
     ))
     expect(await screen.findByRole('group', {
-      name: '21 objectives multiplied by up to 2 techniques per objective, the smaller of 2 selected candidates and limit 2, equals up to 42 technique attempts.',
+      name: adaptiveAttemptEquationName(
+        21,
+        2,
+        'the smaller of 2 selected candidates and limit 2',
+      ),
     })).toBeInTheDocument()
     expect(screen.queryByText('Exact total unavailable')).not.toBeInTheDocument()
   })
@@ -776,7 +799,11 @@ describe('ScenarioDetail', () => {
     await advanceTimers(300)
     await flushRenderedPromises()
     expect(screen.getByRole('group', {
-      name: '21 objectives multiplied by up to 2 techniques per objective, the smaller of 2 selected candidates and limit 2, equals up to 42 technique attempts.',
+      name: adaptiveAttemptEquationName(
+        21,
+        2,
+        'the smaller of 2 selected candidates and limit 2',
+      ),
     })).toBeInTheDocument()
 
     await user.click(screen.getByTestId('dataset-airt_fairness'))
@@ -791,7 +818,11 @@ describe('ScenarioDetail', () => {
       'airt_leakage',
     ])
     expect(screen.getByRole('group', {
-      name: '20 objectives multiplied by up to 2 techniques per objective, the smaller of 2 selected candidates and limit 2, equals up to 40 technique attempts.',
+      name: adaptiveAttemptEquationName(
+        20,
+        2,
+        'the smaller of 2 selected candidates and limit 2',
+      ),
     })).toBeInTheDocument()
 
     await user.click(screen.getByTestId('restore-default-datasets'))
@@ -799,7 +830,11 @@ describe('ScenarioDetail', () => {
     await flushRenderedPromises()
     expect(mockEstimateRun.mock.calls.at(-1)?.[1]).not.toHaveProperty('dataset_names')
     expect(screen.getByRole('group', {
-      name: '21 objectives multiplied by up to 2 techniques per objective, the smaller of 2 selected candidates and limit 2, equals up to 42 technique attempts.',
+      name: adaptiveAttemptEquationName(
+        21,
+        2,
+        'the smaller of 2 selected candidates and limit 2',
+      ),
     })).toBeInTheDocument()
 
     for (const datasetName of scenario.default_datasets.filter((name) => name !== 'airt_fairness')) {
@@ -809,7 +844,11 @@ describe('ScenarioDetail', () => {
     await flushRenderedPromises()
     expect(mockEstimateRun.mock.calls.at(-1)?.[1].dataset_names).toEqual(['airt_fairness'])
     expect(screen.getByRole('group', {
-      name: '1 objective multiplied by up to 2 techniques per objective, the smaller of 2 selected candidates and limit 2, equals up to 2 technique attempts.',
+      name: adaptiveAttemptEquationName(
+        1,
+        2,
+        'the smaller of 2 selected candidates and limit 2',
+      ),
     })).toBeInTheDocument()
 
     failNextRequest = true
@@ -859,7 +898,11 @@ describe('ScenarioDetail', () => {
     expect(screen.queryByRole('group', { name: 'Individual techniques' })).not.toBeInTheDocument()
 
     expect(await screen.findByRole('group', {
-      name: '21 objectives multiplied by up to 2 techniques per objective, the smaller of 2 selected candidates and limit 2, equals up to 42 technique attempts.',
+      name: adaptiveAttemptEquationName(
+        21,
+        2,
+        'the smaller of 2 selected candidates and limit 2',
+      ),
     })).toBeInTheDocument()
 
     await user.click(screen.getByLabelText('Core (14 techniques)'))
@@ -867,7 +910,11 @@ describe('ScenarioDetail', () => {
     const selectedMembers = screen.getByTestId('selected-technique-set-members')
     expect(within(selectedMembers).getByText('core_member_14')).toBeInTheDocument()
     expect(await screen.findByRole('group', {
-      name: '21 objectives multiplied by up to 2 techniques per objective, the smaller of 5 compatible candidates from 14 selected and limit 2, equals up to 42 technique attempts.',
+      name: adaptiveAttemptEquationName(
+        21,
+        2,
+        'the smaller of 5 compatible candidates from 14 selected and limit 2',
+      ),
     })).toBeInTheDocument()
     expect(screen.getAllByText(
       /5 compatible candidates from 14 selected · limit 2/,
@@ -886,7 +933,11 @@ describe('ScenarioDetail', () => {
     await user.clear(maxAttempts)
     await user.type(maxAttempts, '1')
     expect(await screen.findByRole('group', {
-      name: '21 objectives multiplied by up to 1 technique per objective, the smaller of 5 compatible candidates from 14 selected and limit 1, equals up to 21 technique attempts.',
+      name: adaptiveAttemptEquationName(
+        21,
+        1,
+        'the smaller of 5 compatible candidates from 14 selected and limit 1',
+      ),
     })).toBeInTheDocument()
     expect(screen.getAllByText(
       /5 compatible candidates from 14 selected · limit 1/,
@@ -894,7 +945,11 @@ describe('ScenarioDetail', () => {
 
     await user.clear(maxAttempts)
     expect(await screen.findByRole('group', {
-      name: '21 objectives multiplied by up to 3 techniques per objective, the smaller of 5 compatible candidates from 14 selected and limit 3, equals up to 63 technique attempts.',
+      name: adaptiveAttemptEquationName(
+        21,
+        3,
+        'the smaller of 5 compatible candidates from 14 selected and limit 3',
+      ),
     })).toBeInTheDocument()
 
     await user.type(maxAttempts, '0')
@@ -934,7 +989,7 @@ describe('ScenarioDetail', () => {
     )).toBeInTheDocument()
     expect(screen.queryByText(/Leave blank to use the default of 3/)).not.toBeInTheDocument()
     expect(maxAttempts).toHaveValue(2)
-    expect(within(preview).getByText('up to 42')).toBeInTheDocument()
+    expect(within(preview).getByText('up to 63')).toBeInTheDocument()
     const initialRequestCount = mockEstimateRun.mock.calls.length
 
     await user.clear(maxAttempts)
@@ -1003,7 +1058,7 @@ describe('ScenarioDetail', () => {
     expect(mockEstimateRun.mock.calls.at(-1)?.[1].scenario_params).toEqual({
       max_attempts_per_objective: 2,
     })
-    expect(within(preview).getByText('up to 42')).toBeInTheDocument()
+    expect(within(preview).getByText('up to 63')).toBeInTheDocument()
 
     await user.clear(maxAttempts)
     await user.type(maxAttempts, '1')
@@ -1013,7 +1068,7 @@ describe('ScenarioDetail', () => {
     expect(mockEstimateRun.mock.calls.at(-1)?.[1].scenario_params).toEqual({
       max_attempts_per_objective: 1,
     })
-    expect(within(within(preview).getByTestId('adaptive-work-calculation')).getByText('up to 21'))
+    expect(within(within(preview).getByTestId('run-calculation')).getByText('up to 42'))
       .toBeInTheDocument()
     expect(screen.getByTestId('launch-scenario-btn')).toBeEnabled()
 
@@ -1107,7 +1162,11 @@ describe('ScenarioDetail', () => {
 
     const maxAttempts = await screen.findByRole('spinbutton', { name: 'Maximum techniques per objective' })
     await screen.findByRole('group', {
-      name: '21 objectives multiplied by up to 2 techniques per objective, the smaller of 2 selected candidates and limit 2, equals up to 42 technique attempts.',
+      name: adaptiveAttemptEquationName(
+        21,
+        2,
+        'the smaller of 2 selected candidates and limit 2',
+      ),
     })
     expect(maxAttempts).toHaveAttribute('max', '2')
     expect(maxAttempts).toHaveValue(2)
@@ -1168,7 +1227,11 @@ describe('ScenarioDetail', () => {
       expect.any(AbortSignal),
     ))
     expect(await screen.findByRole('group', {
-      name: '21 objectives multiplied by up to 2 techniques per objective, the smaller of 2 selected candidates and limit 2, equals up to 42 technique attempts.',
+      name: adaptiveAttemptEquationName(
+        21,
+        2,
+        'the smaller of 2 selected candidates and limit 2',
+      ),
     })).toBeInTheDocument()
     expect(screen.getByText(
       'Maximum reached: Recommended (default) provides 2 compatible techniques for this target.',
@@ -1235,9 +1298,11 @@ describe('ScenarioDetail', () => {
         `Maximum reached: ${displayName} provides ${maximum} compatible techniques for this target.`,
       )).toBeInTheDocument()
       expect(await screen.findByRole('group', {
-        name: `21 objectives multiplied by up to ${maximum} techniques per objective, the smaller of ${maximum} selected candidates and limit ${maximum}, equals up to ${
-          21 * maximum
-        } technique attempts.`,
+        name: adaptiveAttemptEquationName(
+          21,
+          maximum,
+          `the smaller of ${maximum} selected candidates and limit ${maximum}`,
+        ),
       })).toBeInTheDocument()
       expect(mockEstimateRun).not.toHaveBeenCalledWith(
         'adaptive.text_adaptive',
@@ -1279,14 +1344,22 @@ describe('ScenarioDetail', () => {
       name: 'Maximum techniques per objective',
     })
     await screen.findByRole('group', {
-      name: '21 objectives multiplied by up to 2 techniques per objective, the smaller of 2 selected candidates and limit 2, equals up to 42 technique attempts.',
+      name: adaptiveAttemptEquationName(
+        21,
+        2,
+        'the smaller of 2 selected candidates and limit 2',
+      ),
     })
 
     await user.click(screen.getByLabelText('Core (14 techniques)'))
     await waitFor(() => expect(maxAttempts).toHaveAttribute('max', '5'))
     await user.type(maxAttempts, '5')
     await screen.findByRole('group', {
-      name: '21 objectives multiplied by up to 5 techniques per objective, the smaller of 5 compatible candidates from 14 selected and limit 5, equals up to 105 technique attempts.',
+      name: adaptiveAttemptEquationName(
+        21,
+        5,
+        'the smaller of 5 compatible candidates from 14 selected and limit 5',
+      ),
     })
 
     await user.click(screen.getByLabelText('Recommended (default) — 2 techniques'))
@@ -1297,7 +1370,11 @@ describe('ScenarioDetail', () => {
       'Reduced to 2 because Recommended (default) provides 2 compatible techniques for this target.',
     )).toBeInTheDocument()
     await screen.findByRole('group', {
-      name: '21 objectives multiplied by up to 2 techniques per objective, the smaller of 2 selected candidates and limit 2, equals up to 42 technique attempts.',
+      name: adaptiveAttemptEquationName(
+        21,
+        2,
+        'the smaller of 2 selected candidates and limit 2',
+      ),
     })
     expect(mockEstimateRun).not.toHaveBeenCalledWith(
       'adaptive.text_adaptive',
@@ -1504,7 +1581,7 @@ describe('ScenarioDetail', () => {
     expect(mockStartRun.mock.calls[0][0].include_baseline).toBe(false)
   })
 
-  it('updates Adaptive planned arithmetic ON to OFF to ON while preserving inner work', async () => {
+  it('updates unified Adaptive attempt arithmetic ON to OFF to ON', async () => {
     const scenario = makeAdaptiveScenario()
     mockGetScenario.mockResolvedValue(scenario)
     mockEstimateRun.mockImplementation(
@@ -1527,10 +1604,14 @@ describe('ScenarioDetail', () => {
 
     const preview = screen.getByRole('complementary', { name: 'Run preview' })
     expect(await within(preview).findByRole('group', {
-      name: 'Direct baseline comparison is included: 21 direct baseline attacks plus up to 21 Adaptive attacks equals 21–42 planned attacks.',
+      name: adaptiveAttemptEquationName(
+        21,
+        14,
+        'the smaller of 14 selected candidates and limit 14',
+      ),
     })).toBeInTheDocument()
-    expect(within(preview).getByTestId('adaptive-work-calculation')).toHaveTextContent(
-      'up to 294technique attempts',
+    expect(within(preview).getByTestId('run-calculation')).toHaveTextContent(
+      'up to 315attack attempts',
     )
     expect(screen.getByText('Adds 21 direct baseline attacks for the current objectives.'))
       .toBeInTheDocument()
@@ -1542,10 +1623,15 @@ describe('ScenarioDetail', () => {
     expect(within(preview).getByText('Calculating planned attacks...')).toBeInTheDocument()
     expect(within(preview).getByText('Not included')).toBeInTheDocument()
     expect(await within(preview).findByRole('group', {
-      name: 'Direct baseline comparison is not included: up to 21 Adaptive attacks equals up to 21 planned attacks.',
+      name: adaptiveAttemptEquationName(
+        21,
+        14,
+        'the smaller of 14 selected candidates and limit 14',
+        false,
+      ),
     })).toBeInTheDocument()
-    expect(within(preview).getByTestId('adaptive-work-calculation')).toHaveTextContent(
-      'up to 294technique attempts',
+    expect(within(preview).getByTestId('run-calculation')).toHaveTextContent(
+      'up to 294attack attempts',
     )
     expect(mockEstimateRun).toHaveBeenLastCalledWith(
       'adaptive.text_adaptive',
@@ -1561,7 +1647,11 @@ describe('ScenarioDetail', () => {
     expect(within(preview).getByText('Included — direct objective without an attack technique'))
       .toBeInTheDocument()
     expect(await within(preview).findByRole('group', {
-      name: 'Direct baseline comparison is included: 21 direct baseline attacks plus up to 21 Adaptive attacks equals 21–42 planned attacks.',
+      name: adaptiveAttemptEquationName(
+        21,
+        14,
+        'the smaller of 14 selected candidates and limit 14',
+      ),
     })).toBeInTheDocument()
     expect(mockEstimateRun).toHaveBeenLastCalledWith(
       'adaptive.text_adaptive',
@@ -1587,7 +1677,11 @@ describe('ScenarioDetail', () => {
     renderDetail('/scenarios/adaptive.text_adaptive')
 
     await screen.findByRole('group', {
-      name: 'Direct baseline comparison is included: 21 direct baseline attacks plus up to 21 Adaptive attacks equals 21–42 planned attacks.',
+      name: adaptiveAttemptEquationName(
+        21,
+        2,
+        'the smaller of 2 selected candidates and limit 2',
+      ),
     })
 
     let resolveOff: ((estimate: ScenarioDefaultRunSizeEstimate) => void) | null = null
@@ -1621,7 +1715,11 @@ describe('ScenarioDetail', () => {
     }))
     await flushRenderedPromises()
     expect(screen.getByRole('group', {
-      name: 'Direct baseline comparison is included: 21 direct baseline attacks plus up to 21 Adaptive attacks equals 21–42 planned attacks.',
+      name: adaptiveAttemptEquationName(
+        21,
+        2,
+        'the smaller of 2 selected candidates and limit 3',
+      ),
     })).toBeInTheDocument()
 
     resolveOff(makeFullyCompatibleAdaptiveEstimateForRequest(scenario, {
@@ -1631,10 +1729,19 @@ describe('ScenarioDetail', () => {
     }))
     await flushRenderedPromises()
     expect(screen.getByRole('group', {
-      name: 'Direct baseline comparison is included: 21 direct baseline attacks plus up to 21 Adaptive attacks equals 21–42 planned attacks.',
+      name: adaptiveAttemptEquationName(
+        21,
+        2,
+        'the smaller of 2 selected candidates and limit 3',
+      ),
     })).toBeInTheDocument()
     expect(screen.queryByRole('group', {
-      name: 'Direct baseline comparison is not included: up to 21 Adaptive attacks equals up to 21 planned attacks.',
+      name: adaptiveAttemptEquationName(
+        21,
+        2,
+        'the smaller of 2 selected candidates and limit 3',
+        false,
+      ),
     })).not.toBeInTheDocument()
   })
 
